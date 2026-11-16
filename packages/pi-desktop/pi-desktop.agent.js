@@ -111,7 +111,7 @@ export function manifest(baseUrl, models) {
     schemaVersion: 1,
     id: "local.magpie-gateway",
     name: "Magpie Gateway",
-    version: "0.2.0",
+    version: "0.1.0",
     description: "Adds the local Magpie gateway as a model provider: every model Magpie offers Pi-Desktop, with its multi-vendor routing, groups and fallback. 把本机 Magpie 网关加为模型服务。",
     author: "magpie-community",
     homepage: "https://github.com/magpie-community/plugins/tree/main/packages/pi-desktop",

@@ -1,6 +1,6 @@
 {
   "name": "@magpie-community/agent-pi-desktop",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "description": "Pi-Desktop as a connect-only Magpie agent: Magpie keeps a Pi-Desktop plugin folder that declares it as a model provider, with its current models and their thinking levels",
   "type": "module",
   "files": [
