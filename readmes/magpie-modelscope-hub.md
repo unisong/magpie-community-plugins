@@ -33,7 +33,13 @@ provider 的模型时，只用 `accountsOf(readAuth(), id)[0]` —— **第一�
 
 ## 安装
 
-从 GitHub 装（推荐）：
+从 npm 装（推荐，更新检查走 npm，不占 GitHub 限额）：
+
+```powershell
+magpie plugin add magpie-modelscope-hub@latest
+```
+
+从 GitHub 装（想看源码提交时用）：
 
 ```powershell
 magpie plugin add github:BangShou1st/magpie-modelscope-hub
@@ -137,6 +143,32 @@ supported" 的条目）标成 `deprecated`，magpie 会把它们从选择器和�
 没有文档依据的 id 一律不猜：`variants` 留空、`reasoning` 不硬写 true。一个填了
 档位但上游不认的变体，会让用户选「high」而实际仍是默认档——比没有更糟。国内站
 38 个模型里，15 个标了思考，其中 4 个有档位。
+
+### 每个模型消耗多少魔粒（倍率）
+
+官方只给三档价：轻量 0.5、主流 1、旗舰 2 魔粒/次，但**没有「哪个模型属于哪档」
+的接口**。`/v1/models` 只回 id；模型详情 API 里没有价格、`magicube` 或 `tier`
+字段；模型页上那句「预计消耗魔粒」是前端算的。所以这张表是实测出来的：
+
+1. 对每个模型打一次 `max_tokens: 1` 的最小请求
+2. 读当天账单，看 `SPEND_CONFIRM` 里哪个 `model_tier` 的 `count` 加了 1
+3. 加的 `total_amount / count` 就是单价
+
+2026-11-19 对国内站逐个测过（`_probe/rate-sweep.mjs`），实测结果写进
+`src/rates.mjs`，作为模型的 `rate` 字段交给 magpie：
+
+| 单价 | 模型 |
+| --- | --- |
+| 0.5 魔粒/次 | `nex-agi/Nex-N2.5-mini` |
+| 1 魔粒/次 | `MiniMax/MiniMax-M1-80k`、`mistralai/Mistral-Large-Instruct-2407`、`nex-agi/Nex-N2.5-Pro`、`opencompass/CompassJudger-1-32B-Instruct`、`Qwen/Qwen3.5-122B-A10B`、`Qwen/Qwen3.5-27B`、`Qwen/Qwen3.5-35B-A3B`、`Qwen/Qwen3.8-27B`、`Qwen/Qwen3.8-Flash-Next`、`Shanghai_AI_Laboratory/Intern-S2-Preview`、`XGenerationLab/XiYanSQL-QwenCoder-32B-2412 / 2504` |
+| 2 魔粒/次 | `deepseek-ai/DeepSeek-V4-Pro-0813`、`deepseek-ai/DeepSeek-V4.1-Flash-1017`、`Qwen/Qwen3.5-397B-A17B`、`ZhipuAI/GLM-5.2` |
+
+返回「has no provider supported」或 401 的模型测不到，就不给 `rate`——没数不猜。
+国际站还没登录、也没实测，同样不显示倍率。
+
+magpie 的模型选择器会把它画成 `2×` 这样的小标签，和 WorkBuddy 的 `credits`
+倍率是同一个字段（`internal/plugin/providers.go` 的 `Rate`）。上面这 17 个模型
+之外，选择器里不显示倍率，不是「免费」。
 
 ### 一次请求花了多少魔粒？
 
