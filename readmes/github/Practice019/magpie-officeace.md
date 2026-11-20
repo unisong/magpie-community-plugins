@@ -59,6 +59,22 @@ OfficeAce / CodeArts（华为云 AgentArts / MaaS / 码道）接进 magpie。非
 计费清单上有的才会列出来。计费清单拉取失败时退回**上一份成功的清单**，
 不会把选不了的 id 一股脑洒出来。
 
+### 模型能力从哪来
+
+**只来自上游，不写死。** 两个 provider 的上游今天都**不提供能力声明**：
+
+| provider | 目录接口 | 返回的字段 |
+|---|---|---|
+| 果办 OfficeAce | `GET /v2/models` + `GET /v1/model-token-rates` | 只有 `id` / `name` |
+| 码道 CodeArts | `opengw gateway/config` + `builtinModels` | 只有 `model_id` / `model_name` / `context_window` / `max_tokens` |
+
+所以界面上「全部不支持图片输入」是**上游的事实**，不是插件的断言：`-vl` 视觉模型
+本来就被过滤掉（它们上下文小、不支持工具调用），其余的按上游的话写 `image: false`。
+
+一旦上游开始下发 `capabilities`（或顶层 `vision` / `input_modalities`），
+`src/models.mjs` 的 `upstreamCapabilities()` 会**自动**接管：`capabilities.input.image`、
+`modalities.input`、`attachment`、`supportsImage` 四处同源，不再需要对代码做任何改动。
+
 ---
 
 ## 签到

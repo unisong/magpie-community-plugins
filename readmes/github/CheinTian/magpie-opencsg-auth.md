@@ -73,10 +73,31 @@ opencode auth login opencsg --method oauth
 ```
 
 Leave **Gateway URL** empty for the public service. OpenCode opens the OpenCSG
-sign-in page, receives the callback on localhost, exchanges the login for an AI
-Gateway key and saves that key. The browser must be able to reach the machine
-running OpenCode; use API-key login on a headless host or a private gateway
-that cannot complete this callback flow.
+sign-in page and the platform returns the login to a fixed loopback callback,
+`http://127.0.0.1:11437/api/cloud/auth/callback`, which the plugin is
+listening on. It exchanges the returned CSGHub JWT for an AI Gateway key and
+saves that key.
+
+The callback address is the platform's built-in local sign-in target
+(`OPENCSG_USER_SERVER_LITE_REDIRECT_URL`), and the sign-in asks the user
+service for `state=lite` so the browser is sent there. OpenCSG's portal
+callback only forwards a login to the portal itself, to callbacks registered
+in `OPENCSG_USER_SERVER_FLOW_REDIRECTS`, or to that lite target; a plugin that
+chose its own `http://127.0.0.1:<random port>` callback is rejected with
+`opencsg.com/errors/server-error?error_code=500`.
+
+Consequences:
+
+- The browser must run on the same machine as OpenCode/magpie.
+- Port `11437` must be free. `csghub-lite` (`csglite`) listens on the same
+  loopback target (`server.AuthCallbackAddr`, default `127.0.0.1:11437`), so
+  sign in with only one of them at a time. CSGClaw does not use it: it serves
+  its own `/api/v1/auth/callback` on its listen address instead.
+- A private deployment that changed `OPENCSG_USER_SERVER_LITE_REDIRECT_URL`
+  needs the same URL in `OPENCSG_SIGNIN_CALLBACK`, e.g.
+  `OPENCSG_SIGNIN_CALLBACK=http://127.0.0.1:11438/api/cloud/auth/callback`.
+- Use API-key login on a headless host or when the browser cannot reach this
+  machine's loopback address.
 
 You can also run `/connect` in the OpenCode TUI, choose **OpenCSG**, and select
 either **OpenCSG API key** or **Sign in with OpenCSG**.
@@ -180,6 +201,41 @@ To use the local checkout instead:
 ```sh
 magpie plugin add ./magpie-opencsg-auth
 ```
+
+Browser sign-in uses the same loopback callback described for OpenCode above:
+the browser must run on this machine and port `11437` must be free.
+
+### Plan and balance
+
+magpie shows each account's subscription plan and wallet balance on its usage
+page. It reads them through `auth.usage`, a magpie-only hook; OpenCode has no
+equivalent and shows no usage for this provider.
+
+The plugin asks the CSGHub deployment that serves the gateway for:
+
+- `GET /api/v1/accounting/credit/{user-uuid}/balance` - the wallet balance,
+  whose `composition` splits cash and bonus credit;
+- `GET /api/v1/accounting/token-plans/{namespace-uuid}/get` - the current
+  token-plan subscription with its latest billing period.
+
+CSGHub keeps money in 分 (cents). Every amount is converted to 元 the way
+csghub-portal does it (`amount / 100`), so a stored `550984.7` is shown as
+`¥5,509.85`, and cash and bonus credit are listed beside it.
+
+A token plan becomes one window per model quota of the current billing period,
+in the unit the plan meters (`tokens` for text generation, ranking and
+embeddings; `requests` for every other task), renewing when the period ends.
+A model that reaches its cap therefore holds back only that model, not the
+whole account. The plan's name and end date show as the account's plan, and a
+subscription without an end date (an automatically renewing one) is marked as
+renewing.
+
+Private deployments degrade quietly. When the accounting service answers
+nothing (community CSGHub runs none) or the namespace has no plan, the account
+is still listed, with just its name and no error. Only a real failure - a
+server error or an unreachable portal - surfaces as the usage card's error.
+
+Reads are cached for 60 seconds.
 
 For API-key login, choose the API-key method instead of `oauth`. The optional
 gateway prompt accepts the same URL forms described above. The optional
@@ -291,12 +347,15 @@ not saved.
 ```sh
 bun test
 bun run check
+bun run login-check            # live browser sign-in, end to end
+bun run login-check https://ai-gateway.example.com/aigateway/v1
 ```
 
 The package has no runtime dependencies. OAuth callback, JWT parsing and key
 exchange are covered by unit tests; the complete OpenCode request path has
-been tested against a local mock gateway. A real public OpenCSG OAuth login
-still needs verification with a live account.
+been tested against a local mock gateway. `bun run login-check` runs the same
+sign-in the plugin performs (authorize URL, loopback callback, key exchange,
+`/models` check) against a real account without starting magpie or OpenCode.
 
 ## License
 

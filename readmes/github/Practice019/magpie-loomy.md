@@ -121,6 +121,39 @@ magpie plugin add owner/magpie-loomy
 
 ---
 
+## 模型能力从哪来
+
+**全部来自上游，一个都不写死。**
+
+`provider.models` 每次拉 `GET /api/v1/models` 时，上游会随每个模型下发能力声明：
+
+```json
+{"id":"DeepSeek-V4.1-Flash",
+ "capabilities":{"reasoning":true,"vision":true,"function_calling":true,
+                 "input_modalities":["text","image"],"output_modalities":["text"]}}
+```
+
+插件把它原样映射成 magpie 的两组声明（`src/hooks/models.mjs` 的
+`mapUpstreamCapabilities`，**唯一一处映射**）：
+
+| 上游 | magpie |
+|---|---|
+| `capabilities.vision` / `input_modalities` 含 `image` | `capabilities.input.image`、`modalities.input`、`attachment`、`supportsImage` |
+| `capabilities.input_modalities` | `capabilities.input.{text,image,audio,video,pdf}` 与 `modalities.input` |
+| `capabilities.output_modalities` | `capabilities.output.*` 与 `modalities.output` |
+| `capabilities.function_calling` | `capabilities.toolcall` |
+| `capabilities.reasoning` | `capabilities.reasoning` |
+
+两条纪律：
+
+* **上游没给能力字段 ⇒ 回落 `["text"]`**，不按模型名猜（猜错的表现是「发图卡死」）。
+* **生图模型保持现状**：`doubao-seedream-5-lite` / `qwen-image-3.0-pro` /
+  `Hy-Image-3.5-preview` 的模态是「收文本 → 出图片」，与上游的文本能力无关。
+
+想核一份真实形状的映射结果：`node scripts/print-model-mapping.mjs`。
+
+---
+
 ## 批量导入
 
 用 magpie 原生的 **「＋ 从文件导入账号…」**（供应商编辑页 → 账号区）。
