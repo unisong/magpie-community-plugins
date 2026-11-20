@@ -401,6 +401,8 @@ cursor-agent-bridge -p --model <模型ID> "只回复：收到"
 
 控制台「Cursor CLI 接管」卡片提供安装/移除包装器、复制一次性启动命令，并显示 CLI 版本是否落在已实测范围。已实测版本：`2026.11.19`。CLI 运行时会改写 `~/.cursor/cli-config.json` 的默认模型，属正常行为，可用 `/model` 切回。
 
+如果使用 Orca 的「启动聊天」：Orca 会直接 spawn `cursor-agent --list-models` / `cursor-agent acp`，不经过 shell，且忽略它自己的 `agentDefaultEnv` / `agentCmdOverrides`。setup 会把 `~/.local/bin/cursor-agent` 替换为桥接包装器（官方入口保留为 `cursor-agent-official`），使 Orca 聊天、终端与脚本统一接管；控制台「官方入口」可一键恢复。官方 CLI 自更新会重建入口，重跑 setup 或点控制台的「接管官方入口」即可修复。Orca 会持久缓存旧模型目录，接管后若仍显示官方模型，重启一次 Orca 即可。
+
 **直接输入 `cursor-agent` 就接管默认开启**（可在控制台「可编辑参数」中关闭）：setup 会在 `~/.zshrc`（或 `~/.bashrc`）写入一个带 `# >>> cursor-bridge >>>` 标记的函数块，通过同名 shell 函数注入环境变量，并用 `command cursor-agent` 调用官方二进制。重新打开终端后生效；仅作用于交互式 shell，脚本与 IDE 集成不受影响。关闭开关只移除该标记块。Windows 不支持函数式接管，请使用 `cursor-agent-bridge`。
 
 ---
